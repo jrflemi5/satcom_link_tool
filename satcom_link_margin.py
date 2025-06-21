@@ -65,62 +65,68 @@ def calculate_link_metrics(
 # ----------------------------------------
 # Streamlit App UI
 # ----------------------------------------
-st.set_page_config(page_title="Tactical SATCOM Link Tool", layout="centered")
+st.set_page_config(page_title="Tactical SATCOM Link Tool", layout="wide")
 st.title("📡 Tactical SATCOM Link Margin Calculator")
 st.markdown("Analyze tradeoffs in SATCOM terminals based on MODCOD, bandwidth, and SWaP constraints.")
 
-# --- Preset Profiles ---
-profile = st.selectbox("Preset Config", ["Custom", "Handheld (Omni)", "Manpack (Directional)", "Vehicle Relay"])
+# --- Split into two columns ---
+input_col, output_col = st.columns([2, 1])
 
-if profile == "Handheld (Omni)":
-    tx_power, tx_gain, rx_gain, freq_input, unit = 5, 2, 2, 300, "MHz"
-elif profile == "Manpack (Directional)":
-    tx_power, tx_gain, rx_gain, freq_input, unit = 10, 10, 10, 8.4, "GHz"
-elif profile == "Vehicle Relay":
-    tx_power, tx_gain, rx_gain, freq_input, unit = 15, 15, 15, 2.2, "GHz"
-else:
-    tx_power = st.slider("Transmitter Power (dBW)", 0, 30, 10)
-    tx_gain = st.slider("Tx Antenna Gain (dBi)", 0, 30, 10)
-    rx_gain = st.slider("Rx Antenna Gain (dBi)", 0, 30, 10)
-    freq_input = st.number_input("Operating Frequency", value=8.4, min_value=0.001)
-    unit = st.selectbox("Frequency Unit", ["Hz", "MHz", "GHz"])
+with input_col:
+    st.header("🔧 System Configuration")
 
-unit_multipliers = {"Hz": 1, "MHz": 1e6, "GHz": 1e9}
-freq_hz = freq_input * unit_multipliers[unit]
-band = classify_band(freq_hz)
+    profile = st.selectbox("Preset Config", ["Custom", "Handheld (Omni)", "Manpack (Directional)", "Vehicle Relay"])
 
-distance_km = st.slider("Distance to Target (km)", 1, 500, 100)
-noise_figure_db = st.slider("System Noise Figure (dB)", 1.0, 10.0, 3.0)
-bandwidth_mhz = st.slider("Bandwidth (MHz)", 0.01, 20.0, 1.0)
+    if profile == "Handheld (Omni)":
+        tx_power, tx_gain, rx_gain, freq_input, unit = 5, 2, 2, 300, "MHz"
+    elif profile == "Manpack (Directional)":
+        tx_power, tx_gain, rx_gain, freq_input, unit = 10, 10, 10, 8.4, "GHz"
+    elif profile == "Vehicle Relay":
+        tx_power, tx_gain, rx_gain, freq_input, unit = 15, 15, 15, 2.2, "GHz"
+    else:
+        tx_power = st.slider("Transmitter Power (dBW)", 0, 30, 10)
+        tx_gain = st.slider("Tx Antenna Gain (dBi)", 0, 30, 10)
+        rx_gain = st.slider("Rx Antenna Gain (dBi)", 0, 30, 10)
+        freq_input = st.number_input("Operating Frequency", value=8.4, min_value=0.001)
+        unit = st.selectbox("Frequency Unit", ["Hz", "MHz", "GHz"])
+
+    distance_km = st.slider("Distance to Target (km)", 1, 500, 100)
+    noise_figure_db = st.slider("System Noise Figure (dB)", 1.0, 10.0, 3.0)
+    bandwidth_mhz = st.slider("Bandwidth (MHz)", 0.01, 20.0, 1.0)
+    modcod = st.selectbox("MODCOD Scheme", list(modcod_table.keys()))
+
+    freq_hz = freq_input * {"Hz": 1, "MHz": 1e6, "GHz": 1e9}[unit]
+    band = classify_band(freq_hz)
+
+    st.markdown(f"**Normalized Frequency:** {freq_hz/1e9:.3f} GHz")
+    st.markdown(f"**Estimated Band:** {band}")
+
+# --- Calculate ---
 bandwidth_hz = bandwidth_mhz * 1e6
-modcod = st.selectbox("MODCOD Scheme", list(modcod_table.keys()))
-
-st.write(f"**Normalized Frequency:** {freq_hz/1e9:.3f} GHz")
-st.write(f"**Estimated Band:** {band}")
-
-# --- Calculation ---
 margin, ebn0, required_ebn0, fspl, total_loss, noise_floor, c_rx, data_rate = calculate_link_metrics(
     tx_power, tx_gain, rx_gain, freq_hz, distance_km, noise_figure_db, bandwidth_hz, modcod
 )
 
-# --- Output ---
-st.subheader("📈 Link Budget Results")
-st.metric("Link Margin", f"{margin:.2f} dB")
-st.metric("Eb/N0 (Actual)", f"{ebn0:.2f} dB")
-st.metric("Eb/N0 (Required)", f"{required_ebn0:.2f} dB")
-st.write(f"• Data Rate: **{data_rate/1e6:.2f} Mbps**")
-st.write(f"• Received Carrier Power: **{c_rx:.2f} dBW**")
-st.write(f"• Noise Floor: **{noise_floor:.2f} dBW**")
-st.write(f"• Free-Space Path Loss: **{fspl:.2f} dB**")
-st.write(f"• Total Link Loss: **{total_loss:.2f} dB**")
+with output_col:
+    st.header("📈 Link Budget Results")
+    st.metric("Link Margin", f"{margin:.2f} dB")
+    st.metric("Eb/N0 (Actual)", f"{ebn0:.2f} dB")
+    st.metric("Eb/N0 (Required)", f"{required_ebn0:.2f} dB")
+    st.metric("Data Rate", f"{data_rate/1e6:.2f} Mbps")
 
-if margin > 10:
-    st.success("✅ Strong link — highly reliable.")
-elif margin > 3:
-    st.info("🟢 Sufficient margin — expected to work reliably.")
-elif margin > 0:
-    st.warning("⚠️ Marginal link — may degrade under stress.")
-else:
-    st.error("❌ Link not viable — adjust system parameters.")
+    st.markdown(f"• Received Carrier Power: **{c_rx:.2f} dBW**")
+    st.markdown(f"• Noise Floor: **{noise_floor:.2f} dBW**")
+    st.markdown(f"• Free-Space Path Loss: **{fspl:.2f} dB**")
+    st.markdown(f"• Total Link Loss: **{total_loss:.2f} dB**")
+
+    if margin > 10:
+        st.success("✅ Strong link — highly reliable.")
+    elif margin > 3:
+        st.info("🟢 Sufficient margin — expected to work reliably.")
+    elif margin > 0:
+        st.warning("⚠️ Marginal link — may degrade under stress.")
+    else:
+        st.error("❌ Link not viable — adjust system parameters.")
+
 
 
