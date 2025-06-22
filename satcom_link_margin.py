@@ -69,7 +69,19 @@ def calculate_link_metrics(
     required_ebn0 = modcod_table[modcod]["required_ebn0"]
     link_margin_db = ebn0_db - required_ebn0
 
-    return link_margin_db, ebn0_db, required_ebn0, fspl_db, total_loss_db, noise_floor_dbw, c_rx_dbw, data_rate_bps
+    return (
+        link_margin_db,
+        ebno_db,
+        required_ebno,
+        fspl_db,
+        total_loss_db,
+        noise_floor_dbw,
+        c_rx_dbw,
+        data_rate_bps,
+        rain_fade_db,
+        misc_losses_db
+    )
+
 
 # ----------------------------------------
 # Streamlit App UI
