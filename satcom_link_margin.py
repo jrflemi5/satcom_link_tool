@@ -121,7 +121,7 @@ with input_col:
         min_value=1.0,
         max_value=10.0,
         value=3.0,
-        help="Represents the added internal receiver noise. Lower = better. Tactical SATCOM systems typically range from 2–6 dB."
+        help="System Noise Figure represents the added internal receiver noise. Lower = better. Tactical SATCOM systems typically range from 2–6 dB."
     )
 
     bandwidth_mhz = st.slider("Bandwidth (MHz)", 0.01, 20.0, 1.0)
