@@ -137,7 +137,24 @@ with output_col:
     st.markdown(f"• Total Link Loss: **{total_loss:.2f} dB**")
     st.write(f"• Rain Fade Loss: **{env_losses['rain_fade']} dB**")
     st.write(f"• Miscellaneous Loss: **{env_losses['misc']} dB**")
+    show_loss_chart = st.checkbox("📊 Show Loss Breakdown Chart")
 
+    if show_loss_chart:
+        import matplotlib.pyplot as plt
+
+        labels = ['Free-Space Loss', 'Rain Fade', 'Misc Loss']
+        loss_values = [fspl, env_losses["rain_fade"], env_losses["misc"]]
+
+        fig, ax = plt.subplots()
+        bars = ax.bar(labels, loss_values, color=["#5DADE2", "#58D68D", "#F4D03F"])
+        ax.set_ylabel("Loss (dB)")
+        ax.set_title("Environmental and Path Loss Components")
+
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2., height + 0.5, f'{height:.1f}', ha='center')
+
+        st.pyplot(fig)
     if margin > 10:
         st.success("✅ Strong link — highly reliable.")
     elif margin > 3:
