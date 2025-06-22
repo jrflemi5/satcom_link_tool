@@ -151,13 +151,13 @@ with input_col:
 
 
 # --- Calculate ---
-bandwidth_hz = bandwidth_mhz * 1e6
-margin, ebn0, required_ebn0, fspl, total_loss, noise_floor, c_rx, data_rate = calculate_link_metrics(
-    tx_power, tx_gain, rx_gain, freq_hz, distance_km, noise_figure_db,
-    bandwidth_hz, modcod,
+margin, ebn0, required_ebn0, fspl, total_loss, noise_floor, c_rx, data_rate, rain_fade_db, misc_losses_db = calculate_link_metrics(
+    tx_power, tx_gain, rx_gain, freq_hz,
+    distance_km, noise_figure_db, bandwidth_hz, modcod,
     rain_fade_db=env_losses["rain_fade"],
     misc_losses_db=env_losses["misc"]
 )
+
 
 # reference guide
 with st.expander("📘 Variable Reference Guide"):
