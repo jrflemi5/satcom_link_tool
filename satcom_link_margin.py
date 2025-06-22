@@ -135,6 +135,8 @@ with input_col:
 
     st.markdown(f"**Normalized Frequency:** {freq_hz/1e9:.3f} GHz")
     st.markdown(f"**Estimated Band:** {band}")
+
+    #reference guide
     with st.expander("📘 Variable Reference Guide"):
         st.markdown(f"""
         **Tx Power (dBW):** {tx_power}  
