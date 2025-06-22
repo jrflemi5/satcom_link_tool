@@ -10,6 +10,19 @@ from pathlib import Path
 preset_path = Path(__file__).parent / "terminal_presets.json"
 with open(preset_path) as f:
     terminal_presets = json.load(f)
+
+# ----------------------------------------
+# Preset Notes
+# ----------------------------------------
+preset_notes = {
+    "Custom": "Manually configure your terminal’s RF parameters. Useful for testing custom or hypothetical configurations.",
+    "PRC-117G (SATCOM)": "Manpack terminal used for UHF SATCOM, IW, and DAMA waveforms. Common in dismounted operations and vehicle mounts. Typical bands: UHF, L-band.",
+    "AN/PSC-5D": "Multiband tactical terminal supporting both line-of-sight and SATCOM. Often used in mobile or command post configurations. Bands: UHF to S-band.",
+    "AN/PRC-158": "Dual-channel multiband terminal supporting SATCOM, LOS, and MANET operations. Frequently employed for mid-tier tactical comms across L and S bands.",
+    "DRT 4340A": "Signals intelligence receiver typically used for SATCOM monitoring and analysis. High-gain reception, often paired with direction-finding or demodulation systems.",
+    "MUOS Terminal": "Dedicated terminal for Mobile User Objective System (MUOS) SATCOM. Uses UHF band with WCDMA-like waveform. Prioritized for secure beyond-line-of-sight communications."
+}
+
 # ----------------------------------------
 # MODCOD Table
 # ----------------------------------------
@@ -98,6 +111,9 @@ with input_col:
 
     preset_names = ["Custom"] + list(terminal_presets.keys())
     profile = st.selectbox("Preset Config", preset_names)
+    selected_note = preset_notes.get(profile)
+    if selected_note:
+        st.info(f"**Preset Info:** {selected_note}")
 
     # Handle config selection
     if profile in terminal_presets:
@@ -105,15 +121,20 @@ with input_col:
         tx_power = preset["tx_power_dbw"]
         tx_gain = preset["tx_gain_dbi"]
         rx_gain = preset["rx_gain_dbi"]
-        freq_input = preset["freq_mhz"]
-        unit = preset["unit"]
     else:
         tx_power = st.slider("Transmitter Power (dBW)", 0, 30, 10)
         tx_gain = st.slider("Tx Antenna Gain (dBi)", 0, 30, 10)
         rx_gain = st.slider("Rx Antenna Gain (dBi)", 0, 30, 10)
-        freq_input = st.number_input("Operating Frequency", value=8.4, min_value=0.001)
-        unit = st.selectbox("Frequency Unit", ["Hz", "MHz", "GHz"])
 
+    freq_ghz = st.number_input(
+           "Operating Frequency (GHz)",
+            min_value=0.1,
+            max_value=50.0,
+            value=8.4,
+            step=0.1,
+            help="Center frequency of the link. Tactical SATCOM typically uses UHF (~0.3), L (~1.5), S (~2.2), X (~8.4), Ku (~14), or Ka (~30) GHz."
+        )
+    freq_hz = freq_ghz * 1e9
     environment = st.selectbox("Environment Profile", [
         "Open/LOS", "Urban", "Dense Forest", "Mountainous", "Rainy (Tropical)", "Desert", "Maritime"
     ])
@@ -127,7 +148,7 @@ with input_col:
         "Maritime": {"rain_fade": 4.0, "misc": 2.0}
     }
     env_losses = environmental_losses[environment]
-    distance_km = st.slider("Distance to Target (km)", 1, 500, 100)
+    distance_km = st.slider("Distance to Target (km)", 100, 40000, 35786)
     noise_figure_db = st.slider(
         "System Noise Figure (dB)",
         min_value=1.0,
@@ -143,13 +164,14 @@ with input_col:
     bandwidth_hz = bandwidth_mhz * 1e6
     modcod = st.selectbox("MODCOD Scheme", list(modcod_table.keys()))
 
-    freq_hz = freq_input * {"Hz": 1, "MHz": 1e6, "GHz": 1e9}[unit]
     band = classify_band(freq_hz)
 
     st.markdown(f"**Normalized Frequency:** {freq_hz/1e9:.3f} GHz")
     st.markdown(f"**Estimated Band:** {band}")
 
-
+    valid_bands = ["UHF", "L-band", "S-band", "X-band", "Ku-band", "Ka-band"]
+    if band not in valid_bands:
+        st.error("⚠️ Frequency entered is outside typical SATCOM bands.")
 
 # --- Calculate ---
 margin, ebn0, required_ebn0, fspl, total_loss, noise_floor, c_rx, data_rate, rain_fade_db, misc_losses_db = calculate_link_metrics(
@@ -161,38 +183,57 @@ margin, ebn0, required_ebn0, fspl, total_loss, noise_floor, c_rx, data_rate, rai
 
 
 # reference guide
-with st.expander("📘 Variable Reference Guide"):
+with st.expander("Variable Reference Guide"):
     st.markdown(f"""
-    **Tx Power (dBW):** {tx_power}  
-    Power output of the transmitter in decibel-watts.
+**Tx Power (dBW):** `{tx_power}`  
+Transmitter output power expressed in decibel-watts. Typically constrained by terminal size, power budget, and regulatory limits.
 
-    **Tx Antenna Gain (dBi):** {tx_gain}  
-    Directional amplification applied by the transmitting antenna.
+**Tx Antenna Gain (dBi):** `{tx_gain}`  
+Directional gain of the transmitting antenna located on the ground terminal. Higher values focus energy into a narrower beam, increasing effective radiated power (EIRP).
 
-    **Rx Antenna Gain (dBi):** {rx_gain}  
-    Gain applied by the receiving antenna.
+**Rx Antenna Gain (dBi):** `{rx_gain}`  
+Gain of the receiving antenna located on the satellite. Generally high due to the use of parabolic or phased array antennas.
 
-    **Operating Frequency:** {freq_input} {unit}  
-    Frequency of transmission, determines propagation behavior and path loss.
+**Operating Frequency:** `{freq_ghz:.3f}` GHz  
+Center frequency of the RF carrier. Determines free-space path loss, antenna design, and susceptibility to environmental effects like rain fade.  
+Tactical SATCOM commonly operates in the following bands:  
+- **UHF** (~0.3 GHz)  
+- **L-band** (~1.5 GHz)  
+- **S-band** (~2.2 GHz)  
+- **X-band** (~8.4 GHz)  
+- **Ku-band** (~14 GHz)  
+- **Ka-band** (~30 GHz)
 
-    **Distance to Target:** {distance_km} km  
-    Straight-line distance between terminal and satellite.
+**Distance to Target:** `{distance_km}` km  
+Slant range between the terminal and satellite.  
+Typical values:  
+- GEO SATCOM: ~35,786 km  
+- MEO: ~8,000–12,000 km  
+- LEO: ~500–2,000 km  
+Values below ~1,000 km are only applicable for LEO-based systems.
 
-    **Bandwidth:** {bandwidth_mhz} MHz  
-    Signal bandwidth used for the transmission, affects both data rate and noise floor.
+**Bandwidth:** `{bandwidth_mhz}` MHz  
+Allocated RF channel width. Determines maximum throughput and noise power. Not directly selected by users in most systems; defined by waveform or service plan.  
+Typical ranges:  
+- Voice / messaging: 25–100 kHz  
+- Tactical data / C2: 0.1–2 MHz  
+- Video or high-rate ISR: 2–5 MHz+
 
-    **Noise Figure:** {noise_figure_db} dB  
-    Represents internal noise added by the system — lower is better.
+**Noise Figure:** `{noise_figure_db}` dB  
+Represents degradation of signal-to-noise ratio introduced by the receiver’s RF front end. Primarily driven by the low-noise amplifier (LNA) and frequency conversion stages.  
+Typical tactical values: 2–6 dB.
 
-    **MODCOD:** {modcod}  
-    Modulation and coding scheme in use. Affects spectral efficiency and required Eb/N0.
+**MODCOD:** `{modcod}`  
+Modulation and coding scheme used to map digital data to RF signals. Affects spectral efficiency and required Eb/N0 for reliable demodulation.  
+Higher-order MODCODs provide more throughput but require higher link margins. In most systems, selection is automatic based on link conditions.
 
-    **Rain Fade Loss:** {rain_fade_db} dB  
-    Estimated attenuation due to atmospheric moisture.
+**Rain Fade Loss:** `{rain_fade_db}` dB  
+Estimated link attenuation due to precipitation and atmospheric moisture. Increases with frequency and rainfall rate. Most significant above ~6 GHz.
 
-    **Miscellaneous Loss:** {misc_losses_db} dB  
-    Catch-all for unmodeled degradation (pointing loss, polarization, etc.).
+**Miscellaneous Loss:** `{misc_losses_db}` dB  
+Aggregate margin for non-modeled losses including polarization mismatch, antenna mispointing, RF cable loss, filter insertion loss, and implementation inefficiencies.
     """)
+
 
     
 with output_col:
