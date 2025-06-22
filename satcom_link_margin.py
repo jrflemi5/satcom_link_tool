@@ -71,8 +71,8 @@ def calculate_link_metrics(
 
     return (
         link_margin_db,
-        ebno_db,
-        required_ebno,
+        ebn0_db,
+        required_ebn0,
         fspl_db,
         total_loss_db,
         noise_floor_dbw,
@@ -140,6 +140,7 @@ with input_col:
         0.01, 20.0, 1.0,
         help="Receiver channel bandwidth. Higher bandwidth allows higher data rates but increases noise power."
     )
+    bandwidth_hz = bandwidth_mhz * 1e6
     modcod = st.selectbox("MODCOD Scheme", list(modcod_table.keys()))
 
     freq_hz = freq_input * {"Hz": 1, "MHz": 1e6, "GHz": 1e9}[unit]
