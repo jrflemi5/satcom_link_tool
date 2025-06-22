@@ -159,6 +159,15 @@ with output_col:
     st.markdown(f"• Total Link Loss: **{total_loss:.2f} dB**")
     st.write(f"• Rain Fade Loss: **{env_losses['rain_fade']} dB**")
     st.write(f"• Miscellaneous Loss: **{env_losses['misc']} dB**")
+    with st.expander("ℹ️ Loss Term Definitions"):
+        st.markdown("""
+        - **Received Carrier Power:** Power level at the receiver input after path losses and gains.
+        - **Noise Floor:** Thermal noise plus system noise figure over bandwidth.
+        - **Free-Space Path Loss:** Loss due to spreading of signal over distance in free space.
+        - **Rain Fade Loss:** Additional attenuation from rainfall, more severe at higher frequencies.
+        - **Miscellaneous Loss:** Accounts for polarization mismatch, pointing errors, and other non-modeled losses.
+        """)
+
     show_loss_chart = st.checkbox("📊 Show Loss Breakdown Chart")
 
     if show_loss_chart:
