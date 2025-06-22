@@ -1,8 +1,17 @@
 import streamlit as st
 import numpy as np
+import json
+from pathlib import Path
+
 
 # ----------------------------------------
-# MODCOD Table (Example)
+# Import presets
+# ----------------------------------------
+preset_path = Path(__file__).parent / "terminal_presets.json"
+with open(preset_path) as f:
+    terminal_presets = json.load(f)
+# ----------------------------------------
+# MODCOD Table
 # ----------------------------------------
 modcod_table = {
     "BPSK 1/2": {"required_ebn0": 1.5, "spectral_efficiency": 0.5},
@@ -75,21 +84,24 @@ input_col, output_col = st.columns([2, 1])
 with input_col:
     st.header("🔧 System Configuration")
 
-    profile = st.selectbox("Preset Config", ["Custom", "Handheld (Omni)", "Manpack (Directional)", "Vehicle Relay"])
+    preset_names = ["Custom"] + list(terminal_presets.keys())
+    profile = st.selectbox("Preset Config", preset_names)
 
-
-    if profile == "Handheld (Omni)":
-        tx_power, tx_gain, rx_gain, freq_input, unit = 5, 2, 2, 300, "MHz"
-    elif profile == "Manpack (Directional)":
-        tx_power, tx_gain, rx_gain, freq_input, unit = 10, 10, 10, 8.4, "GHz"
-    elif profile == "Vehicle Relay":
-        tx_power, tx_gain, rx_gain, freq_input, unit = 15, 15, 15, 2.2, "GHz"
+    # Handle config selection
+    if profile in terminal_presets:
+        preset = terminal_presets[profile]
+        tx_power = preset["tx_power_dbw"]
+        tx_gain = preset["tx_gain_dbi"]
+        rx_gain = preset["rx_gain_dbi"]
+        freq_input = preset["freq_mhz"]
+        unit = preset["unit"]
     else:
         tx_power = st.slider("Transmitter Power (dBW)", 0, 30, 10)
         tx_gain = st.slider("Tx Antenna Gain (dBi)", 0, 30, 10)
         rx_gain = st.slider("Rx Antenna Gain (dBi)", 0, 30, 10)
         freq_input = st.number_input("Operating Frequency", value=8.4, min_value=0.001)
         unit = st.selectbox("Frequency Unit", ["Hz", "MHz", "GHz"])
+
     environment = st.selectbox("Environment Profile", [
         "Open/LOS", "Urban", "Dense Forest", "Mountainous", "Rainy (Tropical)", "Desert", "Maritime"
     ])

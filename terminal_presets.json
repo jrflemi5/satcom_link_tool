@@ -1,0 +1,37 @@
+{
+  "PRC-117G (SATCOM)": {
+    "tx_power_dbw": 7,
+    "tx_gain_dbi": 2,
+    "rx_gain_dbi": 2,
+    "freq_mhz": 250,
+    "unit": "MHz"
+  },
+  "AN/PSC-5D": {
+    "tx_power_dbw": 10,
+    "tx_gain_dbi": 5,
+    "rx_gain_dbi": 5,
+    "freq_mhz": 275,
+    "unit": "MHz"
+  },
+  "AN/PRC-158": {
+    "tx_power_dbw": 13,
+    "tx_gain_dbi": 3,
+    "rx_gain_dbi": 3,
+    "freq_mhz": 2200,
+    "unit": "MHz"
+  },
+  "DRT 4340A": {
+    "tx_power_dbw": 15,
+    "tx_gain_dbi": 10,
+    "rx_gain_dbi": 10,
+    "freq_mhz": 2400,
+    "unit": "MHz"
+  },
+  "MUOS Terminal": {
+    "tx_power_dbw": 10,
+    "tx_gain_dbi": 4,
+    "rx_gain_dbi": 4,
+    "freq_mhz": 310,
+    "unit": "MHz"
+  }
+}
