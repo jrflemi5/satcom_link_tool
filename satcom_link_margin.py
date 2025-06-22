@@ -123,8 +123,11 @@ with input_col:
         value=3.0,
         help="System Noise Figure represents the added internal receiver noise. Lower = better. Tactical SATCOM systems typically range from 2–6 dB."
     )
-
-    bandwidth_mhz = st.slider("Bandwidth (MHz)", 0.01, 20.0, 1.0)
+    bandwidth_mhz = st.slider(
+        "Bandwidth (MHz)",
+        0.01, 20.0, 1.0,
+        help="Receiver channel bandwidth. Higher bandwidth allows higher data rates but increases noise power."
+    )
     modcod = st.selectbox("MODCOD Scheme", list(modcod_table.keys()))
 
     freq_hz = freq_input * {"Hz": 1, "MHz": 1e6, "GHz": 1e9}[unit]
