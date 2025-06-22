@@ -143,7 +143,11 @@ with output_col:
         import matplotlib.pyplot as plt
 
         labels = ['Free-Space Loss', 'Rain Fade', 'Misc Loss']
-        loss_values = [fspl, env_losses["rain_fade"], env_losses["misc"]]
+        loss_values = [
+            max(abs(fspl), 0.01),
+            max(env_losses["rain_fade"], 0.01),
+            max(env_losses["misc"], 0.01)
+        ]
 
         fig, ax = plt.subplots()
         bars = ax.bar(labels, loss_values, color=["#5DADE2", "#58D68D", "#F4D03F"])
