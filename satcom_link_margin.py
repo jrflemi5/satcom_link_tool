@@ -77,6 +77,7 @@ with input_col:
 
     profile = st.selectbox("Preset Config", ["Custom", "Handheld (Omni)", "Manpack (Directional)", "Vehicle Relay"])
 
+
     if profile == "Handheld (Omni)":
         tx_power, tx_gain, rx_gain, freq_input, unit = 5, 2, 2, 300, "MHz"
     elif profile == "Manpack (Directional)":
@@ -89,7 +90,19 @@ with input_col:
         rx_gain = st.slider("Rx Antenna Gain (dBi)", 0, 30, 10)
         freq_input = st.number_input("Operating Frequency", value=8.4, min_value=0.001)
         unit = st.selectbox("Frequency Unit", ["Hz", "MHz", "GHz"])
-
+    environment = st.selectbox("Environment Profile", [
+        "Open/LOS", "Urban", "Dense Forest", "Mountainous", "Rainy (Tropical)", "Desert", "Maritime"
+    ])
+    environmental_losses = {
+        "Open/LOS": {"rain_fade": 0.0, "misc": 1.0},
+        "Urban": {"rain_fade": 2.0, "misc": 6.0},
+        "Dense Forest": {"rain_fade": 3.0, "misc": 10.0},
+        "Mountainous": {"rain_fade": 2.0, "misc": 8.0},
+        "Rainy (Tropical)": {"rain_fade": 6.0, "misc": 3.0},
+        "Desert": {"rain_fade": 1.0, "misc": 5.0},
+        "Maritime": {"rain_fade": 4.0, "misc": 2.0}
+    }
+    env_losses = environmental_losses[environment]
     distance_km = st.slider("Distance to Target (km)", 1, 500, 100)
     noise_figure_db = st.slider("System Noise Figure (dB)", 1.0, 10.0, 3.0)
     bandwidth_mhz = st.slider("Bandwidth (MHz)", 0.01, 20.0, 1.0)
@@ -104,8 +117,12 @@ with input_col:
 # --- Calculate ---
 bandwidth_hz = bandwidth_mhz * 1e6
 margin, ebn0, required_ebn0, fspl, total_loss, noise_floor, c_rx, data_rate = calculate_link_metrics(
-    tx_power, tx_gain, rx_gain, freq_hz, distance_km, noise_figure_db, bandwidth_hz, modcod
+    tx_power, tx_gain, rx_gain, freq_hz, distance_km, noise_figure_db,
+    bandwidth_hz, modcod,
+    rain_fade_db=env_losses["rain_fade"],
+    misc_losses_db=env_losses["misc"]
 )
+
 
 with output_col:
     st.header("📈 Link Budget Results")
@@ -118,6 +135,8 @@ with output_col:
     st.markdown(f"• Noise Floor: **{noise_floor:.2f} dBW**")
     st.markdown(f"• Free-Space Path Loss: **{fspl:.2f} dB**")
     st.markdown(f"• Total Link Loss: **{total_loss:.2f} dB**")
+    st.write(f"• Rain Fade Loss: **{env_losses['rain_fade']} dB**")
+    st.write(f"• Miscellaneous Loss: **{env_losses['misc']} dB**")
 
     if margin > 10:
         st.success("✅ Strong link — highly reliable.")
