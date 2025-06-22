@@ -135,6 +135,38 @@ with input_col:
 
     st.markdown(f"**Normalized Frequency:** {freq_hz/1e9:.3f} GHz")
     st.markdown(f"**Estimated Band:** {band}")
+    with st.expander("📘 Variable Reference Guide"):
+        st.markdown(f"""
+        **Tx Power (dBW):** {tx_power}  
+        Power output of the transmitter in decibel-watts.
+
+        **Tx Antenna Gain (dBi):** {tx_gain}  
+        Directional amplification applied by the transmitting antenna.
+
+        **Rx Antenna Gain (dBi):** {rx_gain}  
+        Gain applied by the receiving antenna.
+
+        **Operating Frequency:** {freq_input} {unit}  
+        Frequency of transmission, determines propagation behavior and path loss.
+
+        **Distance to Target:** {distance_km} km  
+        Straight-line distance between terminal and satellite.
+
+        **Bandwidth:** {bandwidth_mhz} MHz  
+        Signal bandwidth used for the transmission, affects both data rate and noise floor.
+
+        **Noise Figure:** {noise_figure_db} dB  
+        Represents internal noise added by the system — lower is better.
+
+        **MODCOD:** {modcod}  
+        Modulation and coding scheme in use. Affects spectral efficiency and required Eb/N0.
+
+        **Rain Fade Loss:** {rain_fade_db} dB  
+        Estimated attenuation due to atmospheric moisture.
+
+        **Miscellaneous Loss:** {misc_losses_db} dB  
+        Catch-all for unmodeled degradation (pointing loss, polarization, etc.).
+        """)
 
 # --- Calculate ---
 bandwidth_hz = bandwidth_mhz * 1e6
