@@ -116,7 +116,14 @@ with input_col:
     }
     env_losses = environmental_losses[environment]
     distance_km = st.slider("Distance to Target (km)", 1, 500, 100)
-    noise_figure_db = st.slider("System Noise Figure (dB)", 1.0, 10.0, 3.0)
+    noise_figure_db = st.slider(
+        "System Noise Figure (dB)",
+        min_value=1.0,
+        max_value=10.0,
+        value=3.0,
+        help="Represents the added internal receiver noise. Lower = better. Tactical SATCOM systems typically range from 2–6 dB."
+    )
+
     bandwidth_mhz = st.slider("Bandwidth (MHz)", 0.01, 20.0, 1.0)
     modcod = st.selectbox("MODCOD Scheme", list(modcod_table.keys()))
 
