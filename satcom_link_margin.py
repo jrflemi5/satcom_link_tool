@@ -149,11 +149,11 @@ with output_col:
         bars = ax.bar(labels, loss_values, color=["#5DADE2", "#58D68D", "#F4D03F"])
         ax.set_ylabel("Loss (dB)")
         ax.set_title("Environmental and Path Loss Components")
-
+        ax.set_yscale("log")
         for bar in bars:
             height = bar.get_height()
             ax.text(bar.get_x() + bar.get_width() / 2., height + 0.5, f'{height:.1f}', ha='center')
-
+        st.caption("This chart visualizes how different loss components reduce the received signal power.")
         st.pyplot(fig)
     if margin > 10:
         st.success("✅ Strong link — highly reliable.")
