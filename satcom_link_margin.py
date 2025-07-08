@@ -138,7 +138,7 @@ with input_col:
         help="Includes pointing error, polarization mismatch, cable losses, etc."
     )
 
-    distance_km = st.slider("Distance to Target (km)", 100, 40000, 35786)
+    distance_km = st.slider("Distance to Target (km)", 100, 100000, 35786)
     noise_figure_db = st.slider(
         "System Noise Figure (dB)",
         min_value=1.0,
