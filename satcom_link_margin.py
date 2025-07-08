@@ -4,24 +4,8 @@ import json
 from pathlib import Path
 
 
-# ----------------------------------------
-# Import presets
-# ----------------------------------------
-preset_path = Path(__file__).parent / "terminal_presets.json"
-with open(preset_path) as f:
-    terminal_presets = json.load(f)
 
-# ----------------------------------------
-# Preset Notes
-# ----------------------------------------
-preset_notes = {
-    "Custom": "Manually configure your terminal’s RF parameters. Useful for testing custom or hypothetical configurations.",
-    "PRC-117G (SATCOM)": "Manpack terminal used for UHF SATCOM, IW, and DAMA waveforms. Common in dismounted operations and vehicle mounts. Typical bands: UHF, L-band.",
-    "AN/PSC-5D": "Multiband tactical terminal supporting both line-of-sight and SATCOM. Often used in mobile or command post configurations. Bands: UHF to S-band.",
-    "AN/PRC-158": "Dual-channel multiband terminal supporting SATCOM, LOS, and MANET operations. Frequently employed for mid-tier tactical comms across L and S bands.",
-    "DRT 4340A": "Signals intelligence receiver typically used for SATCOM monitoring and analysis. High-gain reception, often paired with direction-finding or demodulation systems.",
-    "MUOS Terminal": "Dedicated terminal for Mobile User Objective System (MUOS) SATCOM. Uses UHF band with WCDMA-like waveform. Prioritized for secure beyond-line-of-sight communications."
-}
+
 
 # ----------------------------------------
 # MODCOD Table
@@ -62,8 +46,9 @@ def classify_band(freq_hz):
 # ----------------------------------------
 def calculate_link_metrics(
     tx_power_dbw, tx_gain_dbi, rx_gain_dbi, freq_hz,
-    distance_km, noise_figure_db, bandwidth_hz, modcod,
-    rain_fade_db=3.0, misc_losses_db=2.0
+    distance_km, noise_figure_db, bandwidth_hz,
+    spectral_efficiency, required_ebn0,
+    rain_fade_db=0.0, misc_losses_db=0.0
 ):
     c = 3e8
     wavelength_m = c / freq_hz
@@ -76,24 +61,21 @@ def calculate_link_metrics(
     noise_floor_dbw = -228.6 + 10 * np.log10(bandwidth_hz) + noise_figure_db
     cn0_dbhz = c_rx_dbw - noise_floor_dbw + 10 * np.log10(bandwidth_hz)
 
-    spectral_efficiency = modcod_table[modcod]["spectral_efficiency"]
     data_rate_bps = bandwidth_hz * spectral_efficiency
     ebn0_db = cn0_dbhz - 10 * np.log10(data_rate_bps)
-    required_ebn0 = modcod_table[modcod]["required_ebn0"]
     link_margin_db = ebn0_db - required_ebn0
 
     return (
         link_margin_db,
         ebn0_db,
-        required_ebn0,
         fspl_db,
         total_loss_db,
         noise_floor_dbw,
         c_rx_dbw,
         data_rate_bps,
-        rain_fade_db,
-        misc_losses_db
+        cn0_dbhz
     )
+
 
 
 # ----------------------------------------
@@ -109,22 +91,18 @@ input_col, output_col = st.columns([2, 1])
 with input_col:
     st.header("🔧 System Configuration")
 
-    preset_names = ["Custom"] + list(terminal_presets.keys())
-    profile = st.selectbox("Preset Config", preset_names)
-    selected_note = preset_notes.get(profile)
-    if selected_note:
-        st.info(f"**Preset Info:** {selected_note}")
 
-    # Handle config selection
-    if profile in terminal_presets:
-        preset = terminal_presets[profile]
-        tx_power = preset["tx_power_dbw"]
-        tx_gain = preset["tx_gain_dbi"]
-        rx_gain = preset["rx_gain_dbi"]
-    else:
-        tx_power = st.slider("Transmitter Power (dBW)", 0, 30, 10)
-        tx_gain = st.slider("Tx Antenna Gain (dBi)", 0, 30, 10)
-        rx_gain = st.slider("Rx Antenna Gain (dBi)", 0, 30, 10)
+
+    # Sliders with preset defaults
+    tx_power = st.slider("Transmitter Power (dBW)", 0, 30, 10)
+    tx_gain = st.slider("Tx Antenna Gain (dBi)", 0, 30, 10)
+    rx_gain = st.slider("Rx Antenna Gain (dBi)", 0, 30, 10)
+    # Determine defaults if waveform selected
+    default_modcod = "QPSK 1/2"
+    default_bandwidth = 1.0
+
+
+
 
     freq_ghz = st.number_input(
            "Operating Frequency (GHz)",
@@ -135,19 +113,23 @@ with input_col:
             help="Center frequency of the link. Tactical SATCOM typically uses UHF (~0.3), L (~1.5), S (~2.2), X (~8.4), Ku (~14), or Ka (~30) GHz."
         )
     freq_hz = freq_ghz * 1e9
-    environment = st.selectbox("Environment Profile", [
-        "Open/LOS", "Urban", "Dense Forest", "Mountainous", "Rainy (Tropical)", "Desert", "Maritime"
-    ])
-    environmental_losses = {
-        "Open/LOS": {"rain_fade": 0.0, "misc": 1.0},
-        "Urban": {"rain_fade": 2.0, "misc": 6.0},
-        "Dense Forest": {"rain_fade": 3.0, "misc": 10.0},
-        "Mountainous": {"rain_fade": 2.0, "misc": 8.0},
-        "Rainy (Tropical)": {"rain_fade": 6.0, "misc": 3.0},
-        "Desert": {"rain_fade": 1.0, "misc": 5.0},
-        "Maritime": {"rain_fade": 4.0, "misc": 2.0}
-    }
-    env_losses = environmental_losses[environment]
+
+    rain_fade_db = st.number_input(
+        "Rain Fade Loss (dB)",
+        min_value=0.0,
+        max_value=20.0,
+        value=3.0,
+        help="Estimate of link attenuation due to precipitation. Most significant above ~6 GHz."
+    )
+
+    misc_losses_db = st.number_input(
+        "Miscellaneous Losses (dB)",
+        min_value=0.0,
+        max_value=20.0,
+        value=2.0,
+        help="Includes pointing error, polarization mismatch, cable losses, etc."
+    )
+
     distance_km = st.slider("Distance to Target (km)", 100, 40000, 35786)
     noise_figure_db = st.slider(
         "System Noise Figure (dB)",
@@ -158,15 +140,26 @@ with input_col:
     )
     bandwidth_mhz = st.slider(
         "Bandwidth (MHz)",
-        0.01, 20.0, 1.0,
-        help="Receiver channel bandwidth. Higher bandwidth allows higher data rates but increases noise power."
+        min_value=0.01,
+        max_value=20.0,
+        value=default_bandwidth,
+        step=0.01,
+        help="Signal bandwidth used for the transmission, affects both data rate and noise floor."
     )
     bandwidth_hz = bandwidth_mhz * 1e6
-    modcod = st.selectbox("MODCOD Scheme", list(modcod_table.keys()))
+
+    spectral_efficiency = st.number_input(
+        "Spectral Efficiency (bps/Hz)", min_value=0.1, max_value=10.0, value=1.0,
+        help="Ratio of data rate to bandwidth. For example, QPSK 1/2 = 1.0, 8PSK 2/3 = 2.0"
+    )
+
+    required_ebn0 = st.number_input(
+        "Required Eb/N0 (dB)", min_value=-10.0, max_value=20.0, value=2.0,
+        help="Threshold for reliable demodulation/decoding. Depends on modulation and coding."
+    )
 
     band = classify_band(freq_hz)
 
-    st.markdown(f"**Normalized Frequency:** {freq_hz/1e9:.3f} GHz")
     st.markdown(f"**Estimated Band:** {band}")
 
     valid_bands = ["UHF", "L-band", "S-band", "X-band", "Ku-band", "Ka-band"]
@@ -174,11 +167,11 @@ with input_col:
         st.error("⚠️ Frequency entered is outside typical SATCOM bands.")
 
 # --- Calculate ---
-margin, ebn0, required_ebn0, fspl, total_loss, noise_floor, c_rx, data_rate, rain_fade_db, misc_losses_db = calculate_link_metrics(
+margin, ebn0, fspl, total_loss, noise_floor, c_rx, data_rate, cn0_dbhz = calculate_link_metrics(
     tx_power, tx_gain, rx_gain, freq_hz,
-    distance_km, noise_figure_db, bandwidth_hz, modcod,
-    rain_fade_db=env_losses["rain_fade"],
-    misc_losses_db=env_losses["misc"]
+    distance_km, noise_figure_db, bandwidth_hz,
+    spectral_efficiency, required_ebn0,
+    rain_fade_db, misc_losses_db
 )
 
 
@@ -223,9 +216,18 @@ Typical ranges:
 Represents degradation of signal-to-noise ratio introduced by the receiver’s RF front end. Primarily driven by the low-noise amplifier (LNA) and frequency conversion stages.  
 Typical tactical values: 2–6 dB.
 
-**MODCOD:** `{modcod}`  
-Modulation and coding scheme used to map digital data to RF signals. Affects spectral efficiency and required Eb/N0 for reliable demodulation.  
-Higher-order MODCODs provide more throughput but require higher link margins. In most systems, selection is automatic based on link conditions.
+**Spectral Efficiency:** `{spectral_efficiency} bps/Hz`  
+The ratio of data rate to bandwidth. Reflects how efficiently information is packed into the RF signal.  
+- Higher values indicate more bits per second per Hz of bandwidth, but typically require better signal conditions (higher Eb/N₀).  
+- For example, QPSK with 1/2 coding ≈ 1.0 bps/Hz, 8PSK 2/3 ≈ 2.0 bps/Hz.  
+- Spread-spectrum systems like MUOS may operate at low spectral efficiency by design, prioritizing resilience over speed.
+
+**Required Eb/N₀:** `{required_ebn0} dB`  
+The minimum energy per bit to noise density ratio required for reliable demodulation or decoding, based on the waveform, coding, and system margin.  
+- Lower values indicate more robust (but lower throughput) modulation/coding.  
+- For example, robust coding might require as low as 1–2 dB, while high-speed links (e.g., 64QAM) might need 10+ dB.  
+- In spread-spectrum systems, required Eb/N₀ is often much lower due to processing gain.
+
 
 **Rain Fade Loss:** `{rain_fade_db}` dB  
 Estimated link attenuation due to precipitation and atmospheric moisture. Increases with frequency and rainfall rate. Most significant above ~6 GHz.
@@ -239,6 +241,11 @@ Aggregate margin for non-modeled losses including polarization mismatch, antenna
 with output_col:
     st.header("📈 Link Budget Results")
     st.metric("Link Margin", f"{margin:.2f} dB")
+    st.metric(
+        label="C/N₀",
+        value=f"{cn0_dbhz:.2f} dB-Hz",
+        help="Carrier-to-noise density ratio. Indicates received signal strength per Hz of bandwidth. Higher C/N₀ generally means better link quality."
+    )
     st.metric("Eb/N0 (Actual)", f"{ebn0:.2f} dB")
     st.metric("Eb/N0 (Required)", f"{required_ebn0:.2f} dB")
     st.metric("Data Rate", f"{data_rate/1e6:.2f} Mbps")
@@ -247,8 +254,8 @@ with output_col:
     st.markdown(f"• Noise Floor: **{noise_floor:.2f} dBW**")
     st.markdown(f"• Free-Space Path Loss: **{fspl:.2f} dB**")
     st.markdown(f"• Total Link Loss: **{total_loss:.2f} dB**")
-    st.write(f"• Rain Fade Loss: **{env_losses['rain_fade']} dB**")
-    st.write(f"• Miscellaneous Loss: **{env_losses['misc']} dB**")
+    st.write(f"• Rain Fade Loss: **{rain_fade_db} dB**")
+    st.write(f"• Miscellaneous Loss: **{misc_losses_db} dB**")
     with st.expander("ℹ️ Loss Term Definitions"):
         st.markdown("""
         - **Received Carrier Power:** Power level at the receiver input after path losses and gains.
