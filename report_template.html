@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Link Budget Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { color: #003366; }
+        ul { line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <h1>Link Budget Report</h1>
+
+    <h2>System Parameters</h2>
+    <ul>
+        <li>Transmitter Power: {{ tx_power }} dBW</li>
+        <li>Tx Antenna Gain: {{ tx_gain }} dBi</li>
+        <li>Rx Antenna Gain: {{ rx_gain }} dBi</li>
+        <li>Operating Frequency: {{ freq_ghz }} GHz</li>
+        <li>Distance to Target: {{ distance_km }} km</li>
+        <li>Bandwidth: {{ bandwidth_mhz }} MHz</li>
+        <li>Spectral Efficiency: {{ spectral_efficiency }} bps/Hz</li>
+        <li>Required Eb/N0: {{ required_ebn0 }} dB</li>
+        <li>Rain Fade: {{ rain_fade }} dB</li>
+        <li>Miscellaneous Losses: {{ misc_losses }} dB</li>
+    </ul>
+
+    <h2>Link Budget Results</h2>
+    <ul>
+    	<li>Free Space Path Loss: {{ fspl }} dB</li>
+    	<li>Total Link Loss: {{ total_loss }} dB</li>
+   	 <li>Received Carrier Power: {{ c_rx }} dBW</li>
+    	<li>Noise Floor: {{ noise_floor }} dBW</li>
+   	 <li>C/N0: {{ cn0 }} dB-Hz</li>
+    	<li>Eb/N0: {{ ebn0 }} dB</li>
+    	<li>Link Margin: {{ link_margin }} dB</li>
+     </ul>
+	
+</body>
+</html>

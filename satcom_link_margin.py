@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import json
 from pathlib import Path
-
+import io
 
 
 
@@ -76,7 +76,15 @@ def calculate_link_metrics(
         cn0_dbhz
     )
 
-
+#-----------------------------------------
+# Export HTML
+#-----------------------------------------
+def render_html_report(template_path, context):
+    with open(template_path, 'r') as f:
+        template = f.read()
+    for key, value in context.items():
+        template = template.replace(f"{{{{ {key} }}}}", str(value))
+    return template
 
 # ----------------------------------------
 # Streamlit App UI
@@ -166,12 +174,43 @@ with input_col:
     if band not in valid_bands:
         st.error("⚠️ Frequency entered is outside typical SATCOM bands.")
 
+
+
 # --- Calculate ---
 margin, ebn0, fspl, total_loss, noise_floor, c_rx, data_rate, cn0_dbhz = calculate_link_metrics(
     tx_power, tx_gain, rx_gain, freq_hz,
     distance_km, noise_figure_db, bandwidth_hz,
     spectral_efficiency, required_ebn0,
     rain_fade_db, misc_losses_db
+)
+context = {
+    "tx_power": tx_power,
+    "tx_gain": tx_gain,
+    "rx_gain": rx_gain,
+    "freq_ghz": round(freq_ghz, 2),
+    "distance_km": distance_km,
+    "bandwidth_mhz": round(bandwidth_mhz, 2),
+    "spectral_efficiency": round(spectral_efficiency, 2),
+    "required_ebn0": round(required_ebn0, 2),
+    "rain_fade": round(rain_fade_db, 2),
+    "misc_losses": round(misc_losses_db, 2),
+    "fspl": round(fspl, 2),
+    "total_loss": round(total_loss, 2),
+    "c_rx": round(c_rx, 2),
+    "noise_floor": round(noise_floor, 2),
+    "cn0": round(cn0_dbhz, 2),
+    "ebn0": round(ebn0, 2),
+    "link_margin": round(margin, 2)
+}
+
+html_report = render_html_report("report_template.html", context)
+html_bytes = io.BytesIO(html_report.encode("utf-8"))
+
+st.download_button(
+    label="Download Link Budget Report (.html)",
+    data=html_bytes,
+    file_name="link_budget_report.html",
+    mime="text/html"
 )
 
 
@@ -273,8 +312,8 @@ with output_col:
         labels = ['Free-Space Loss', 'Rain Fade', 'Misc Loss']
         loss_values = [
             max(abs(fspl), 0.01),
-            max(env_losses["rain_fade"], 0.01),
-            max(env_losses["misc"], 0.01)
+            max(rain_fade_db, 0.01),
+            max(misc_losses_db, 0.01)
         ]
 
         fig, ax = plt.subplots()
