@@ -37,6 +37,6 @@ A live version of the tool is hosted here:
 git clone https://github.com/your-username/satcom-link-tool.git
 cd satcom-link-tool
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run satcom_link_margin.py
 
 
